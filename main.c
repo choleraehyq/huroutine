@@ -32,6 +32,7 @@ void huroutine_test() {
         huroutine_resume(s, id2);
         huroutine_resume(s, id1);
     }
+    huroutine_close(s);
 }
 
 int main(int argc, char **argv) {
