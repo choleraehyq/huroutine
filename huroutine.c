@@ -4,23 +4,6 @@
 #include <stdint.h>
 #include "huroutine.h"
 
-typedef struct {
-    struct schedulor *sch;
-    ucontext_t ctx;
-    huroutine_func func;
-    void *arg;
-    enum huroutine_state state;
-    char *stack;
-} huroutine_t;
-
-struct schedulor {
-    int running;
-    int hu_n;
-    int cap;
-    huroutine_t **vector;
-    ucontext_t main;
-};
-
 schedule_t *huroutine_open(void) {
     schedule_t *s = (schedule_t *)malloc(sizeof(*s));
     s->hu_n = 0;
@@ -100,7 +83,7 @@ void _hu_func(uint32_t low32, uint32_t hi32) {
 }
 
 void huroutine_resume(schedule_t *s, int id) {
-    if (s == NULL || id <= 0 || id > s->cap) {
+    if (s == NULL || id <= 0 || id > s->cap || s->vector[id] == NULL) {
         return;
     }
 
@@ -133,6 +116,9 @@ void huroutine_resume(schedule_t *s, int id) {
 }
 
 int huroutine_status(schedule_t *s, int id) {
+    if (s == NULL || id <= 0 || id > s->cap || s->vector[id] == NULL) {
+        return 0;
+    }
     huroutine_t *tmp = s->vector[id];
     return (int)tmp->state;
 }
@@ -161,4 +147,11 @@ int huroutine_finish(schedule_t *s) {
         ret = 1;
     }
     return ret;
+}
+
+void huroutine_sigmask(schedule_t *s, int id, int sig) {
+    if (s == NULL || id <= 0 || id > s->cap || s->vector[id] == NULL) {
+        return;
+    }
+	sigaddset(&s->vector[id]->ctx.uc_sigmask, sig);
 }
