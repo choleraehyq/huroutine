@@ -15,7 +15,9 @@ timer_t tid;
 node *cur;
 
 void _handler(int sig) {
-	sigprocmask(SIG_BLOCK, &set, NULL);
+	if (sigprocmask(SIG_BLOCK, &set, NULL) == -1) {
+		errexit("sig block in _handler error");
+	}
 	huroutine_yield(sche);
 	while (hid_list->next != NULL) {
 		if (cur->next == NULL) {
@@ -26,7 +28,9 @@ void _handler(int sig) {
 			delete_linklist(hid_list, cur);
 		}
 		else if (curstate == SUSPEND || curstate == READY) {
-			sigprocmask(SIG_UNBLOCK, &set, NULL);
+			if (sigprocmask(SIG_UNBLOCK, &set, NULL) == -1) {
+				errexit("sig unblock in _handler error");
+			}
 			huroutine_resume(sche, cur->hid);
 			return;
 		}
@@ -34,24 +38,36 @@ void _handler(int sig) {
 }
 
 void _sig_timer_init(pid_t pid) {
-	sigemptyset(&set);
-	sigaddset(&set, TIMER_SIG);
+	if (sigemptyset(&set) == -1) {
+		errexit("sigemptyset to set in _sig_timer_init error");
+	}
+	if (sigaddset(&set, TIMER_SIG) == -1) {
+		errexit("sigaddset to set in _sig_timer_init error");
+	}
 
 	sa.sa_flags = SA_NODEFER;
 	sa.sa_handler = &_handler;
-	sigemptyset(&sa.sa_mask);
-	sigaction(TIMER_SIG, &sa, NULL);
+	if (sigemptyset(&sa.sa_mask) == -1) {
+		errexit("sigemptymask to sa_handler in _sig_timer_init error");
+	}
+	if (sigaction(TIMER_SIG, &sa, NULL) == -1) {
+		errexit("sigaction in _sig_timer_init error");
+	}
 
 	sev.sigev_notify = SIGEV_THREAD_ID;
 	sev.sigev_signo = TIMER_SIG;
 	sev._sigev_un._tid= pid; 
-	timer_create(CLOCK_THREAD_CPUTIME_ID, &sev, &tid);
+	if (timer_create(CLOCK_THREAD_CPUTIME_ID, &sev, &tid) == -1) {
+		errexit("timer create in _sig_timer_init error");
+	}
 
 	ts.it_interval.tv_sec = 0;
 	ts.it_interval.tv_nsec = 100;
 	ts.it_value.tv_sec = 0;
 	ts.it_value.tv_nsec = 0;
-	timer_settime(tid, 0, &ts, NULL);
+	if (timer_settime(tid, 0, &ts, NULL) == -1) {
+		errexit("timer settime in _sig_timer_init error");
+	}
 }
 
 void init_uthread(pid_t pid) {
@@ -70,10 +86,14 @@ void init_uthread(pid_t pid) {
 }
 
 void new_uthread(huroutine_func func, void *arg) {	
-	sigprocmask(SIG_BLOCK, &set, NULL);
+	if (sigprocmask(SIG_BLOCK, &set, NULL) == -1) {
+		errexit("sig block to set in new_uthread error");
+	}
 	int hid = huroutine_create(sche, func, arg);
 	insert_head(hid_list, hid);
-	sigprocmask(SIG_UNBLOCK, &set, NULL);
+	if (sigprocmask(SIG_UNBLOCK, &set, NULL) == -1) {
+		errexit("sig unblock to set in new_uthread error");
+	}
 }
 
 void uthread_waitall(void) {

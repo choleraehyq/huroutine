@@ -1,5 +1,5 @@
 #ifndef _LINKLIST_H
-#define _LINKLIST_h
+#define _LINKLIST_H
 
 typedef struct NODE {
 	int hid;

@@ -2,25 +2,39 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#include <stdio.h>
 #include "huroutine.h"
 
 schedule_t *huroutine_open(void) {
     schedule_t *s = (schedule_t *)malloc(sizeof(*s));
+    if (s == NULL) {
+		errexit("schedule_t malloc error");
+	}
     s->hu_n = 0;
     s->cap = DEFAULT_HUROUTINE_N;
     s->running = 0;
     s->vector = (huroutine_t **)malloc(s->cap * sizeof(huroutine_t *));
+	if (s->vector == NULL) {
+		errexit("initial huroutine_t malloc error");
+	}
     memset(s->vector, 0, sizeof(huroutine_t *) * s->cap);
     return s;
 }
 
 huroutine_t *_hu_new(schedule_t *s, huroutine_func func, void *arg) {
+	
     huroutine_t *ret = (huroutine_t *)malloc(sizeof(*ret));
+	if ( ret == NULL) {
+		errexit("new huroutine_t malloc error");
+	}
     ret->sch = s;
     ret->func = func;
     ret->arg = arg;
     ret->state = READY;
     ret->stack = (char *)malloc(sizeof(*ret->stack) * DEFAULT_STACK_SIZE);
+	if (ret->stack == NULL) {
+		errexit("new huroutine stack malloc error");
+	}
     return ret;
 }
 
@@ -35,6 +49,9 @@ int huroutine_create(schedule_t *s, huroutine_func func, void *arg) {
     ++s->hu_n;
     if (s->hu_n > s->cap) {
         s->vector = realloc(s->vector, s->cap * sizeof(*s->vector) * 2);
+		if (s->vector == NULL) {
+			errexit("schedule_t vector realloc error");
+		}
         memset(s->vector+s->cap, 0, s->cap * sizeof(*s->vector));
         s->vector[s->cap] = _hu_new(s, func, arg);
         id = s->cap;
@@ -154,4 +171,9 @@ void huroutine_sigmask(schedule_t *s, int id, int sig) {
         return;
     }
 	sigaddset(&s->vector[id]->ctx.uc_sigmask, sig);
+}
+
+void errexit(char *s) {
+	fprintf(stderr, "%s", s);
+	exit(1);
 }

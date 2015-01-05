@@ -49,5 +49,7 @@ void huroutine_yield(schedule_t *);
 int huroutine_finish(schedule_t *);
 void huroutine_sigmask(schedule_t *, int , int);
 
+void errexit(char *s);
+
 #endif
 
