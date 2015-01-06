@@ -23,7 +23,10 @@ void _handler(int sig) {
 		if (cur->next == NULL) {
 			cur = hid_list->next;
 		}
-		enum huroutine_state curstate = huroutine_status(sche, cur->hid);
+		else 
+			cur = cur->next;
+		enum huroutine_state curstate = 
+			huroutine_status(sche, cur->hid);
 		if (curstate == DEAD) {
 			delete_linklist(hid_list, cur);
 		}

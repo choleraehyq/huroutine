@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include "huroutine.h"
+#include "linklist.h"
 
 schedule_t *huroutine_open(void) {
     schedule_t *s = (schedule_t *)malloc(sizeof(*s));
@@ -18,6 +19,8 @@ schedule_t *huroutine_open(void) {
 		errexit("initial huroutine_t malloc error");
 	}
     memset(s->vector, 0, sizeof(huroutine_t *) * s->cap);
+	s->schequeue = create_linklist();
+	s->currunning = s->schequeue;
     return s;
 }
 
@@ -45,6 +48,11 @@ void _hu_del(huroutine_t **hu) {
     *hu = NULL;
 }
 
+void _add_schequeue(schedule_t *s, int id) {
+	insert_head(s->schequeue, id);
+	s->vector[id]->inqueue = fetchfirst_linklist(s->schequeue);
+}
+
 int huroutine_create(schedule_t *s,
 		huroutine_func func, void *arg, int stksize) {
 	stksize = stksize <= 0 ? DEFAULT_STACK_SIZE : stksize;
@@ -58,6 +66,8 @@ int huroutine_create(schedule_t *s,
         memset(s->vector+s->cap, 0, s->cap * sizeof(*s->vector));
         s->vector[s->cap] = _hu_new(s, func, arg, stksize);
         id = s->cap;
+		_add_schequeue(s, id);
+
         s->cap *= 2;
     }
     else {
@@ -66,12 +76,14 @@ int huroutine_create(schedule_t *s,
             id = (s->hu_n + i) % s->cap;
             if (s->vector[id] == NULL) {
                 s->vector[id] = _hu_new(s, func, arg, stksize);
+				_add_schequeue(s, id);
                 break;
             }
             else if (s->vector[id]->state == DEAD) {
                 s->vector[id]->func = func;
                 s->vector[id]->arg = arg;
                 s->vector[id]->state = READY;
+				_add_schequeue(s, id);
                 break;
             }
         } // end of for-loop
@@ -87,6 +99,12 @@ void huroutine_close(schedule_t *s) {
             _hu_del(&tmp);
         }
     }
+	node *tmp = s->schequeue;
+	while (tmp != NULL) {
+		node *ttmp = tmp;
+		tmp = tmp->next;
+		free(ttmp);
+	}
     free(s->vector);
     free(s);
 }
@@ -99,11 +117,14 @@ void _hu_func(uint32_t low32, uint32_t hi32) {
     cur->func(cur->arg);
     cur->state = DEAD;
     --s->hu_n;
+	delete_linklist(s->schequeue, s->currunning);
     s->running = 0;
+	s->currunning = s->schequeue;
 }
 
 void huroutine_resume(schedule_t *s, int id) {
-    if (s == NULL || id <= 0 || id > s->cap || s->vector[id] == NULL) {
+    if (s == NULL || id <= 0 || id > s->cap ||
+			s->vector[id] == NULL) {
         return;
     }
 
@@ -118,6 +139,7 @@ void huroutine_resume(schedule_t *s, int id) {
             hu->ctx.uc_stack.ss_size = DEFAULT_STACK_SIZE;
             hu->ctx.uc_link = &s->main;
             s->running = id;
+			s->currunning = hu->inqueue;
             hu->state = RUNNING;
             uintptr_t ptr = (uintptr_t)s;
             makecontext(&hu->ctx, (void (*)(void))_hu_func, 2,
@@ -129,6 +151,7 @@ void huroutine_resume(schedule_t *s, int id) {
             
         case SUSPEND:
             s->running = id;
+			s->currunning = hu->inqueue;
             hu->state = RUNNING;
             if (swapcontext(&s->main, &hu->ctx) < 0) {
 				errexit("swapcontext in huroutine_resume error");
@@ -187,7 +210,14 @@ void huroutine_sigmask(schedule_t *s, int id, int sig) {
 	}
 }
 
-void errexit(char *s) {
-	fprintf(stderr, "%s", s);
-	exit(1);
+void huroutine_schedule(schedule_t *s) {
+	while (!huroutine_finish(s)) {
+		if (s->currunning->next == NULL) {
+			s->currunning = s->schequeue->next;
+		}
+		else 
+			s->currunning = s->currunning->next;
+
+		huroutine_resume(s, s->currunning->hid);
+	}
 }

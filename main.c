@@ -30,12 +30,9 @@ void huroutine_test(void) {
 
     int id1 = huroutine_create(s, func1, (void *)&arg1, 0);
     int id2 = huroutine_create(s, func2, (void *)&arg2, 0);
+	printf("%d %d\n", id1, id2);
+	huroutine_schedule(s);
 
-    while (!huroutine_finish(s)) {
-        huroutine_resume(s, id1);
-        huroutine_resume(s, id2);
-        huroutine_resume(s, id1);
-    }
     huroutine_close(s);
 }
 
