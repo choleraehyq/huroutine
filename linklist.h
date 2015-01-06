@@ -10,5 +10,8 @@ typedef struct NODE {
 node *create_linklist(void);
 void insert_head(node *list, int hid);
 void delete_linklist(node *, node *);
+node *fetchfirst_linklist(node *);
+
+void errexit(const char *s);
 
 #endif
