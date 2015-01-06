@@ -28,8 +28,8 @@ void huroutine_test(void) {
     arg2.n = 2;
     arg2.shit = 'b';
 
-    int id1 = huroutine_create(s, func1, (void *)&arg1);
-    int id2 = huroutine_create(s, func2, (void *)&arg2);
+    int id1 = huroutine_create(s, func1, (void *)&arg1, 0);
+    int id2 = huroutine_create(s, func2, (void *)&arg2, 0);
 
     while (!huroutine_finish(s)) {
         huroutine_resume(s, id1);
@@ -61,12 +61,12 @@ void *uthread_test(void *arg) {
 }
 
 int main(int argc, char **argv) {
-	//huroutine_test();
+	huroutine_test();
 	/*
 	pthread_t pid;
 	pthread_create(&pid, NULL, &uthread_test, (void *)NULL);
 	pthread_join(pid, NULL);
 	*/
-	uthread_test((void *)NULL);
+	//uthread_test((void *)NULL);
     return 0;
 }

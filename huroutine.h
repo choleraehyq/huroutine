@@ -41,7 +41,7 @@ struct schedulor {
 schedule_t * huroutine_open(void);
 void huroutine_close(schedule_t *);
 
-int huroutine_create(schedule_t *, huroutine_func, void *arg);
+int huroutine_create(schedule_t *, huroutine_func, void *arg, int stksize);
 void huroutine_resume(schedule_t *, int id);
 int huroutine_status(schedule_t *, int id);
 int huroutine_running(schedule_t *);

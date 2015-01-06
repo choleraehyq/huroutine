@@ -21,7 +21,8 @@ schedule_t *huroutine_open(void) {
     return s;
 }
 
-huroutine_t *_hu_new(schedule_t *s, huroutine_func func, void *arg) {
+huroutine_t *_hu_new(schedule_t *s, 
+		huroutine_func func, void *arg, int stksize) {
 	
     huroutine_t *ret = (huroutine_t *)malloc(sizeof(*ret));
 	if ( ret == NULL) {
@@ -31,7 +32,7 @@ huroutine_t *_hu_new(schedule_t *s, huroutine_func func, void *arg) {
     ret->func = func;
     ret->arg = arg;
     ret->state = READY;
-    ret->stack = (char *)malloc(sizeof(*ret->stack) * DEFAULT_STACK_SIZE);
+    ret->stack = (char *)malloc(sizeof(*ret->stack) * stksize);
 	if (ret->stack == NULL) {
 		errexit("new huroutine stack malloc error");
 	}
@@ -44,7 +45,9 @@ void _hu_del(huroutine_t **hu) {
     *hu = NULL;
 }
 
-int huroutine_create(schedule_t *s, huroutine_func func, void *arg) {
+int huroutine_create(schedule_t *s,
+		huroutine_func func, void *arg, int stksize) {
+	stksize = stksize <= 0 ? DEFAULT_STACK_SIZE : stksize;
     int id;
     ++s->hu_n;
     if (s->hu_n > s->cap) {
@@ -53,7 +56,7 @@ int huroutine_create(schedule_t *s, huroutine_func func, void *arg) {
 			errexit("schedule_t vector realloc error");
 		}
         memset(s->vector+s->cap, 0, s->cap * sizeof(*s->vector));
-        s->vector[s->cap] = _hu_new(s, func, arg);
+        s->vector[s->cap] = _hu_new(s, func, arg, stksize);
         id = s->cap;
         s->cap *= 2;
     }
@@ -62,7 +65,7 @@ int huroutine_create(schedule_t *s, huroutine_func func, void *arg) {
         for (i = 0; i < s->cap; i++) {
             id = (s->hu_n + i) % s->cap;
             if (s->vector[id] == NULL) {
-                s->vector[id] = _hu_new(s, func, arg);
+                s->vector[id] = _hu_new(s, func, arg, stksize);
                 break;
             }
             else if (s->vector[id]->state == DEAD) {
@@ -108,21 +111,28 @@ void huroutine_resume(schedule_t *s, int id) {
 
     switch (hu->state) {
         case READY:
-            getcontext(&hu->ctx);
+            if (getcontext(&hu->ctx) < 0) {
+				errexit("getcontext in huroutine_resume error");
+			}
             hu->ctx.uc_stack.ss_sp = hu->stack;
             hu->ctx.uc_stack.ss_size = DEFAULT_STACK_SIZE;
             hu->ctx.uc_link = &s->main;
             s->running = id;
             hu->state = RUNNING;
             uintptr_t ptr = (uintptr_t)s;
-            makecontext(&hu->ctx, (void (*)(void))_hu_func, 2, (uint32_t)ptr, (uint32_t)(ptr >> 32));
-            swapcontext(&s->main, &hu->ctx);
+            makecontext(&hu->ctx, (void (*)(void))_hu_func, 2,
+						(uint32_t)ptr, (uint32_t)(ptr >> 32));
+            if (swapcontext(&s->main, &hu->ctx) < 0) {
+				errexit("swapcontext in huroutine_resume error");
+			}
             break;
             
         case SUSPEND:
             s->running = id;
             hu->state = RUNNING;
-            swapcontext(&s->main, &hu->ctx);
+            if (swapcontext(&s->main, &hu->ctx) < 0) {
+				errexit("swapcontext in huroutine_resume error");
+			}
             break;
 
         case RUNNING:
@@ -152,7 +162,9 @@ void huroutine_yield(schedule_t *s) {
     s->running = 0;
     huroutine_t *tmp = s->vector[id];
     tmp->state = SUSPEND;
-    swapcontext(&tmp->ctx, &s->main);
+    if (swapcontext(&tmp->ctx, &s->main) < 0) {
+		errexit("swapcontext in huroutine_yield error");
+	}
 }
 
 int huroutine_finish(schedule_t *s) {
@@ -170,7 +182,9 @@ void huroutine_sigmask(schedule_t *s, int id, int sig) {
     if (s == NULL || id <= 0 || id > s->cap || s->vector[id] == NULL) {
         return;
     }
-	sigaddset(&s->vector[id]->ctx.uc_sigmask, sig);
+	if (sigaddset(&s->vector[id]->ctx.uc_sigmask, sig) < 0) {
+		errexit("sigaddset in huroutine_sigmask error");
+	}
 }
 
 void errexit(char *s) {

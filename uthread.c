@@ -89,7 +89,7 @@ void new_uthread(huroutine_func func, void *arg) {
 	if (sigprocmask(SIG_BLOCK, &set, NULL) == -1) {
 		errexit("sig block to set in new_uthread error");
 	}
-	int hid = huroutine_create(sche, func, arg);
+	int hid = huroutine_create(sche, func, arg, 0);
 	insert_head(hid_list, hid);
 	if (sigprocmask(SIG_UNBLOCK, &set, NULL) == -1) {
 		errexit("sig unblock to set in new_uthread error");
