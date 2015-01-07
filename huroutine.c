@@ -185,6 +185,10 @@ void huroutine_yield(schedule_t *s) {
     s->running = 0;
     huroutine_t *tmp = s->vector[id];
     tmp->state = SUSPEND;
+	//should not change s->currunning here,
+	//	because huroutine_schedule() will use it
+	//	to choose the next huroutine, and 
+	//	it will be changed there.
     if (swapcontext(&tmp->ctx, &s->main) < 0) {
 		errexit("swapcontext in huroutine_yield error");
 	}

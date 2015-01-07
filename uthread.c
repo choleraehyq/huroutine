@@ -6,7 +6,6 @@
 #include "linklist.h"
 
 schedule_t *sche;
-node *hid_list;
 struct itimerspec ts;
 struct sigaction sa;
 struct sigevent sev;
@@ -19,22 +18,22 @@ void _handler(int sig) {
 		errexit("sig block in _handler error");
 	}
 	huroutine_yield(sche);
-	while (hid_list->next != NULL) {
-		if (cur->next == NULL) {
-			cur = hid_list->next;
+	while (sche->schequeue->next != NULL) {
+		if (sche->currunning->next == NULL) {
+			sche->currunning = sche->schequeue->next;
 		}
 		else 
-			cur = cur->next;
+			sche->currunning = sche->currunning->next;
 		enum huroutine_state curstate = 
-			huroutine_status(sche, cur->hid);
+			huroutine_status(sche, sche->currunning->hid);
 		if (curstate == DEAD) {
-			delete_linklist(hid_list, cur);
+			delete_linklist(sche->schequeue, sche->currunning);
 		}
 		else if (curstate == SUSPEND || curstate == READY) {
 			if (sigprocmask(SIG_UNBLOCK, &set, NULL) == -1) {
 				errexit("sig unblock in _handler error");
 			}
-			huroutine_resume(sche, cur->hid);
+			huroutine_resume(sche, sche->currunning->hid);
 			return;
 		}
 	}	
@@ -74,26 +73,30 @@ void _sig_timer_init(pid_t pid) {
 }
 
 void init_uthread(pid_t pid) {
-	hid_list = create_linklist();
-	cur = hid_list->next;
-	_sig_timer_init(pid);
 	sche = huroutine_open();
 	huroutine_t *main = (huroutine_t *)malloc(sizeof(huroutine_t));
+	if (main == NULL) {
+		errexit("malloc in init_uthread error");
+	}
 	main->sch = sche;
 	main->state = RUNNING;
-	getcontext(&main->ctx);
+	if (getcontext(&main->ctx) == -1) {
+		errexit("getcontext in init_uthread error");
+	}
 	sche->hu_n++;
 	sche->running = sche->hu_n;
+	insert_head(sche->schequeue, sche->hu_n);
+	main->inqueue = fetchfirst_linklist(sche->schequeue);
+	sche->currunning = main->inqueue;
 	sche->vector[sche->hu_n] = main;
-	insert_head(hid_list, sche->hu_n);
+	_sig_timer_init(pid);
 }
 
 void new_uthread(huroutine_func func, void *arg) {	
 	if (sigprocmask(SIG_BLOCK, &set, NULL) == -1) {
 		errexit("sig block to set in new_uthread error");
 	}
-	int hid = huroutine_create(sche, func, arg, 0);
-	insert_head(hid_list, hid);
+	huroutine_create(sche, func, arg, 0);
 	if (sigprocmask(SIG_UNBLOCK, &set, NULL) == -1) {
 		errexit("sig unblock to set in new_uthread error");
 	}

@@ -3,6 +3,7 @@
 #include <sys/types.h>
 #include "huroutine.h"
 #include "uthread.h"
+#include "nbio.h"
 
 struct arg {
     int n;
@@ -11,15 +12,26 @@ struct arg {
 
 schedule_t *s;
 
+
 void func1(void *arg) {
+	char a[100];
     printf("%d %c\n", ((struct arg *)arg)->n, ((struct arg *)arg)->shit);
     huroutine_yield(s);
     printf("%d %d\n", huroutine_running(s), huroutine_status(s, huroutine_running(s)));
+	int n = nbread(STDIN_FILENO, a, 100);
+	nbwrite(STDOUT_FILENO, a, n);
 }
 
 void func2(void *arg) {
     printf("%d %c\n", ((struct arg *)arg)->n, ((struct arg *)arg)->shit);
+	huroutine_yield(s);
+	int i, sum = 0;
+	for (i = 0; i < 100; i++) {
+		sum += i;
+	}
+	fprintf(stdout, "sum 1 to 100 is %d\n", sum);
 }
+
 
 void huroutine_test(void) {
     s = huroutine_open();
@@ -30,10 +42,12 @@ void huroutine_test(void) {
 
     int id1 = huroutine_create(s, func1, (void *)&arg1, 0);
     int id2 = huroutine_create(s, func2, (void *)&arg2, 0);
-	printf("%d %d\n", id1, id2);
+	printf("New huroutines are %d and %d\n", id1, id2);
+	printf("Start scheduling!\n");
 	huroutine_schedule(s);
 
     huroutine_close(s);
+	printf("Scheduling end.\n");
 }
 
 void u_func1(void *arg) {
