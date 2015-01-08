@@ -2,11 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "linklist.h"
-
-void errexit(const char *s) {
-	fprintf(stderr, "%s\n", s);
-	exit(1);
-}
+#include "err.h"
 
 node *create_linklist(void) {
 	node *ret = (node *)malloc(sizeof(node));
@@ -26,6 +22,9 @@ void insert_head(node *hid_list, int hid) {
 	new_node->hid = hid;
 	new_node->next = hid_list->next;
 	new_node->pre = hid_list;
+	if (hid_list->next != NULL) {
+		hid_list->next->pre = new_node;
+	}
 	hid_list->next = new_node;
 }
 

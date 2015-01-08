@@ -1,6 +1,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include "nbio.h"
+#include "err.h"
 
 void setnonblock(int fd, schedule_t *sche) {
 	s = sche;

@@ -1,4 +1,4 @@
-OBJ=huroutine.o linklist.o nbio.o uthread.o 
+OBJ= err.o huroutine.o linklist.o nbio.o channel.o uthread.o 
 CC=clang
 CFLAGS=-g -Wall -lpthread -lrt
 LINKFLAGS=-c -g -Wall
@@ -6,13 +6,17 @@ LINKFLAGS=-c -g -Wall
 .PHONY : all
 all : main
 
-linklist.o : linklist.c
+err.o : err.c 
+	$(CC) err.c $(LINKFLAGS) -o err.o
+linklist.o : err.o linklist.c 
 	$(CC) linklist.c $(LINKFLAGS) -o linklist.o 
-huroutine.o : linklist.o huroutine.c
+huroutine.o : err.o linklist.o huroutine.c
 	$(CC) huroutine.c $(LINKFLAGS) -o huroutine.o 
-nbio.o : linklist.o huroutine.o nbio.c
+channel.o : err.o huroutine.o channel.c
+	$(CC) channel.c $(LINKFLAGS) -o channel.o
+nbio.o : err.o linklist.o huroutine.o nbio.c
 	$(CC) nbio.c $(LINKFLAGS) -o nbio.o
-uthread.o : huroutine.o linklist.o  uthread.c
+uthread.o : err.o huroutine.o linklist.o  uthread.c
 	$(CC) uthread.c $(LINKFLAGS) -o uthread.o 
 
 main : $(OBJ) main.c

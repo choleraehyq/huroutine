@@ -1,110 +1,83 @@
 #include <string.h>
 #include <stdlib.h>
 #include <time.h>
+#include <sys/types.h>
 #include "huroutine.h"
 #include "uthread.h"
 #include "linklist.h"
+#include "err.h"
 
-schedule_t *sche;
-struct itimerspec ts;
-struct sigaction sa;
-struct sigevent sev;
-sigset_t set;
-timer_t tid;
-node *cur;
+static schedule_t *_sche;
+struct itimerspec _ts;
+struct sigaction _sa;
+struct sigevent _sev;
+sigset_t _set;
+timer_t _tid;
+pid_t _pid;
 
 void _handler(int sig) {
-	if (sigprocmask(SIG_BLOCK, &set, NULL) == -1) {
-		errexit("sig block in _handler error");
-	}
-	huroutine_yield(sche);
-	while (sche->schequeue->next != NULL) {
-		if (sche->currunning->next == NULL) {
-			sche->currunning = sche->schequeue->next;
-		}
-		else 
-			sche->currunning = sche->currunning->next;
-		enum huroutine_state curstate = 
-			huroutine_status(sche, sche->currunning->hid);
-		if (curstate == DEAD) {
-			delete_linklist(sche->schequeue, sche->currunning);
-		}
-		else if (curstate == SUSPEND || curstate == READY) {
-			if (sigprocmask(SIG_UNBLOCK, &set, NULL) == -1) {
-				errexit("sig unblock in _handler error");
-			}
-			huroutine_resume(sche, sche->currunning->hid);
-			return;
-		}
-	}	
+	huroutine_yield(_sche);
 }
 
 void _sig_timer_init(pid_t pid) {
-	if (sigemptyset(&set) == -1) {
+	if (sigemptyset(&_set) == -1) {
 		errexit("sigemptyset to set in _sig_timer_init error");
 	}
-	if (sigaddset(&set, TIMER_SIG) == -1) {
+	if (sigaddset(&_set, TIMER_SIG) == -1) {
 		errexit("sigaddset to set in _sig_timer_init error");
 	}
 
-	sa.sa_flags = SA_NODEFER;
-	sa.sa_handler = &_handler;
-	if (sigemptyset(&sa.sa_mask) == -1) {
-		errexit("sigemptymask to sa_handler in _sig_timer_init error");
-	}
-	if (sigaction(TIMER_SIG, &sa, NULL) == -1) {
+	_sa.sa_flags = 0;
+	_sa.sa_handler = &_handler;
+	_sa.sa_mask = _set;
+	if (sigaction(TIMER_SIG, &_sa, NULL) == -1) {
 		errexit("sigaction in _sig_timer_init error");
 	}
 
-	sev.sigev_notify = SIGEV_THREAD_ID;
-	sev.sigev_signo = TIMER_SIG;
-	sev._sigev_un._tid= pid; 
-	if (timer_create(CLOCK_THREAD_CPUTIME_ID, &sev, &tid) == -1) {
+	_sev.sigev_notify = SIGEV_THREAD_ID;
+	_sev.sigev_signo = TIMER_SIG;
+	_sev._sigev_un._tid= pid; 
+	if (timer_create(CLOCK_THREAD_CPUTIME_ID, &_sev, &_tid) == -1) {
 		errexit("timer create in _sig_timer_init error");
 	}
 
-	ts.it_interval.tv_sec = 0;
-	ts.it_interval.tv_nsec = 100;
-	ts.it_value.tv_sec = 0;
-	ts.it_value.tv_nsec = 0;
-	if (timer_settime(tid, 0, &ts, NULL) == -1) {
-		errexit("timer settime in _sig_timer_init error");
+	_ts.it_interval.tv_sec = 0;
+	_ts.it_interval.tv_nsec = 100;
+	_ts.it_value.tv_sec = 0;
+	_ts.it_value.tv_nsec = 100;
+	if (timer_settime(_tid, 0, &_ts, NULL) == -1) {
+		errexit("timer_settime in _sig_timer_init error");
 	}
 }
 
-void init_uthread(pid_t pid) {
-	sche = huroutine_open();
-	huroutine_t *main = (huroutine_t *)malloc(sizeof(huroutine_t));
-	if (main == NULL) {
-		errexit("malloc in init_uthread error");
-	}
-	main->sch = sche;
-	main->state = RUNNING;
-	if (getcontext(&main->ctx) == -1) {
-		errexit("getcontext in init_uthread error");
-	}
-	sche->hu_n++;
-	sche->running = sche->hu_n;
-	insert_head(sche->schequeue, sche->hu_n);
-	main->inqueue = fetchfirst_linklist(sche->schequeue);
-	sche->currunning = main->inqueue;
-	sche->vector[sche->hu_n] = main;
-	_sig_timer_init(pid);
+void uthread_init(pid_t pid) {
+	_sche = huroutine_open();
+	_pid = pid;
 }
 
-void new_uthread(huroutine_func func, void *arg) {	
-	if (sigprocmask(SIG_BLOCK, &set, NULL) == -1) {
-		errexit("sig block to set in new_uthread error");
+void uthread_create(huroutine_func func, void *arg) {	
+	huroutine_create(_sche, func, arg, 0);
+}
+
+void uthread_schedule(void) {
+	if (sigprocmask(SIG_BLOCK, &_set, NULL) == -1) {
+		errexit("first sig block in uthread__schedule error");
 	}
-	huroutine_create(sche, func, arg, 0);
-	if (sigprocmask(SIG_UNBLOCK, &set, NULL) == -1) {
-		errexit("sig unblock to set in new_uthread error");
+	_sig_timer_init(_pid);
+	while (!huroutine_finish(_sche)) {
+		if (_sche->currunning->next == NULL) {
+			_sche->currunning = _sche->schequeue->next;
+		}
+		else 
+			_sche->currunning = _sche->currunning->next;
+		
+		if (sigprocmask(SIG_UNBLOCK, &_set, NULL) == -1) {
+			errexit("sig unblock in uthread__schedule error");
+		}
+		huroutine_resume(_sche, _sche->currunning->hid);
+		if (sigprocmask(SIG_BLOCK, &_set, NULL) == -1) {
+			errexit("second sig block in uthread__schedule error");
+		}
 	}
 }
 
-void uthread_waitall(void) {
-	for (;;) {
-		if (huroutine_finish(sche)) 
-			return;
-	}
-}

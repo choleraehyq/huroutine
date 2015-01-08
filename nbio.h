@@ -3,7 +3,6 @@
 
 #include <unistd.h>
 #include "huroutine.h"
-#include "linklist.h" // errexit
 
 schedule_t *s;
 

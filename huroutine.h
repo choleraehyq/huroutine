@@ -9,6 +9,8 @@
 #define DEFAULT_HUROUTINE_N 16
 #define MAX_HUROUTINE 1000
 
+typedef void (*huroutine_func)(void *);
+
 enum huroutine_state {
     DEAD = 0,
     READY,
@@ -16,14 +18,9 @@ enum huroutine_state {
     SUSPEND
 };
 
-typedef void (*huroutine_func)(void *);
-
-struct huroutine;
 struct schedulor;
 
-typedef struct schedulor schedule_t;
-
-typedef struct {
+typedef struct huroutine {
     struct schedulor *sch;
     ucontext_t ctx;
     huroutine_func func;
@@ -33,7 +30,7 @@ typedef struct {
 	node *inqueue;
 } huroutine_t;
 
-struct schedulor {
+typedef struct schedulor {
     int running;
     int hu_n;
     int cap;
@@ -41,7 +38,8 @@ struct schedulor {
     ucontext_t main;
 	node *schequeue;	
 	node *currunning;
-};
+} schedule_t;
+
 
 schedule_t * huroutine_open(void);
 void huroutine_close(schedule_t *);

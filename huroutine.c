@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include "huroutine.h"
 #include "linklist.h"
+#include "err.h"
 
 schedule_t *huroutine_open(void) {
     schedule_t *s = (schedule_t *)malloc(sizeof(*s));
@@ -39,6 +40,12 @@ huroutine_t *_hu_new(schedule_t *s,
 	if (ret->stack == NULL) {
 		errexit("new huroutine stack malloc error");
 	}
+    if (getcontext(&ret->ctx) < 0) {
+		errexit("getcontext in _hu_new error");
+	}
+    ret->ctx.uc_stack.ss_sp = ret->stack;
+    ret->ctx.uc_stack.ss_size = DEFAULT_STACK_SIZE;
+    ret->ctx.uc_link = &s->main;
     return ret;
 }
 
@@ -132,12 +139,6 @@ void huroutine_resume(schedule_t *s, int id) {
 
     switch (hu->state) {
         case READY:
-            if (getcontext(&hu->ctx) < 0) {
-				errexit("getcontext in huroutine_resume error");
-			}
-            hu->ctx.uc_stack.ss_sp = hu->stack;
-            hu->ctx.uc_stack.ss_size = DEFAULT_STACK_SIZE;
-            hu->ctx.uc_link = &s->main;
             s->running = id;
 			s->currunning = hu->inqueue;
             hu->state = RUNNING;

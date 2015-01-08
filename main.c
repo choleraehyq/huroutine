@@ -1,9 +1,13 @@
 #include <stdio.h>
 #include <pthread.h>
 #include <sys/types.h>
+#include <stdlib.h>
+#include <unistd.h>
 #include "huroutine.h"
 #include "uthread.h"
 #include "nbio.h"
+#include "channel.h"
+#include "err.h"
 
 struct arg {
     int n;
@@ -11,15 +15,24 @@ struct arg {
 } arg1, arg2;
 
 schedule_t *s;
+channel *ch;
 
 
 void func1(void *arg) {
-	char a[100];
+	char *a = (char *)malloc(sizeof(char) * 100);
+	if (a == NULL) {
+		errexit("first malloc in func1");
+	}
     printf("%d %c\n", ((struct arg *)arg)->n, ((struct arg *)arg)->shit);
     huroutine_yield(s);
     printf("%d %d\n", huroutine_running(s), huroutine_status(s, huroutine_running(s)));
-	int n = nbread(STDIN_FILENO, a, 100);
-	nbwrite(STDOUT_FILENO, a, n);
+	int *n = (int *)malloc(sizeof(*n));
+	if ( n == NULL) {
+		errexit("second malloc in func1");
+	}
+	*n = nbread(STDIN_FILENO, a, 100);
+	channel_push(ch, (void *)n);
+	channel_push(ch, (void *)a);
 }
 
 void func2(void *arg) {
@@ -30,6 +43,9 @@ void func2(void *arg) {
 		sum += i;
 	}
 	fprintf(stdout, "sum 1 to 100 is %d\n", sum);
+	int n = *(int *)channel_pull(ch);
+	char *a = (char *)channel_pull(ch);
+	nbwrite(STDOUT_FILENO, a, n);
 }
 
 
@@ -39,6 +55,7 @@ void huroutine_test(void) {
     arg1.shit = 'a';
     arg2.n = 2;
     arg2.shit = 'b';
+	ch = channel_create(2, s);
 
     int id1 = huroutine_create(s, func1, (void *)&arg1, 0);
     int id2 = huroutine_create(s, func2, (void *)&arg2, 0);
@@ -46,28 +63,31 @@ void huroutine_test(void) {
 	printf("Start scheduling!\n");
 	huroutine_schedule(s);
 
+	channel_delete(ch);
     huroutine_close(s);
 	printf("Scheduling end.\n");
 }
 
 void u_func1(void *arg) {
+	char a[10] = "shit\n";
 	int i;
 	for (i = 0; i < ((struct arg *)arg)->n; i++)
-		printf("shit%d\n", i);
+		write(STDOUT_FILENO, a, 5);
 }
 
 void u_func2(void *arg) {
+	char a[10] = "fuck\n";
 	int i;
 	for (i = 0; i < ((struct arg *)arg)->n; i++)
-		printf("fuck%d\n", i);
+		write(STDOUT_FILENO, a, 5);
 }
 
 void *uthread_test(void *arg) {
-	init_uthread(gettid());
-	arg1.n = 100;
-	new_uthread(&u_func1, (void *)&arg1);
-	new_uthread(&u_func2, (void *)&arg1);
-	uthread_waitall();
+	uthread_init(gettid());
+	arg1.n = 10000;
+	uthread_create(&u_func1, (void *)&arg1);
+	uthread_create(&u_func2, (void *)&arg1);
+	uthread_schedule();
 	return NULL;
 }
 
@@ -79,5 +99,6 @@ int main(int argc, char **argv) {
 	pthread_join(pid, NULL);
 	*/
 	//uthread_test((void *)NULL);
+
     return 0;
 }
