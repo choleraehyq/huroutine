@@ -1,9 +1,9 @@
-This repository involve a coroutine library, a non-preemptive user-thread library, a deadly simple nonblocking io library and a simple preemptive user-thread library.
+This repository contains a coroutine library, a non-preemptive user-thread library, and a simple preemptive user-thread library.
+They have already been tested on Ubuntu14.04 amd64 and Debian7 amd64 compiled by clang3.4.1 and gcc4.8.2.
 
 The huroutine.h/huroutine.c are the source of the coroutine library and the non-preemptive user-thread library called huroutine.
 The non-preemptive user-thread library is based on the coroutine library, which was implemented with ucontext.h on linux. And the schedule algorithm is the simple round-robin algorithm.
-
-It has been tested on Ubuntu14.04 amd64 and Debian7 amd64 compiled by clang3.4.1 and gcc 4.8.2.
+The benchmark.c is the test program to test the coroutine-switching speed of the huroutine library. The speed is about 2300000 switches per second.
 
 * the default stack of each huroutine is 4KB.
 * a schedulor can schedule only 1000 huroutine at max by default.
@@ -11,10 +11,10 @@ It has been tested on Ubuntu14.04 amd64 and Debian7 amd64 compiled by clang3.4.1
 
 But you can change these options via adjusting the macro in huroutine.h
 
-The uthread.h/uthread.c are the source of the preemptive user-thread library, it is also based on the coroutine library above. I implement the library with sigaction and posix timer. The schedule algorithm is the simple round-robin algorithm too.
+The nbio.h/nbio.c are the deadly simple non-blocking IO library. I have just implemented the non-blocking version of write and read.
 
-The main.c is the demo of the librarys. The huroutine\_test() is the demo function of the former two librarys and the uthread\_test() is the demo function of the latter library. 
+The channel.h/channel.c are the channel library used to deliver variable between two huroutine. Attention: what the channel deliver is pointer, so make sure the memory pointer points to is always accessed. Don't use this to deliver a local variable.
 
-Now the problem is: When I test uthread\_test(), main.c can be compiled successfully, but it cannot print anything while running, and if it run correctly, it should print "shit1" to "shit100" and "fuck1" to "fuck100" alternately.In the other word, the sigaction or timer isn't installed successfully. 
+The uthread.h/uthread.c are the source of the toy preemptive user-thread library, it is also based on the coroutine library above. I implement the library with sigaction and posix timer. The schedule algorithm is the simple round-robin algorithm too. Now the perform of this libray is very bad, it is only can be used. It's switch efficiency is extremely low.
 
-The nbio.c/nbio.h are the source of the simple non-blocking io library fitting the library huroutine. I only implement the non-blocking version of read() and write().
+The main.c is the demo of the librarys. The huroutine\_test() is the demo function of the former two librarys and the uthread\_test() is the demo function of the latter library.
