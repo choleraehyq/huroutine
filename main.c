@@ -92,13 +92,13 @@ void *uthread_test(void *arg) {
 }
 
 int main(int argc, char **argv) {
-	huroutine_test();
+	//huroutine_test();
 	/*
 	pthread_t pid;
 	pthread_create(&pid, NULL, &uthread_test, (void *)NULL);
 	pthread_join(pid, NULL);
 	*/
-	//uthread_test((void *)NULL);
+	uthread_test((void *)NULL);
 
     return 0;
 }
