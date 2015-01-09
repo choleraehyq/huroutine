@@ -42,9 +42,9 @@ void _sig_timer_init(pid_t pid) {
 	}
 
 	_ts.it_interval.tv_sec = 0;
-	_ts.it_interval.tv_nsec = 100;
+	_ts.it_interval.tv_nsec = 10;
 	_ts.it_value.tv_sec = 0;
-	_ts.it_value.tv_nsec = 100;
+	_ts.it_value.tv_nsec = 10;
 	if (timer_settime(_tid, 0, &_ts, NULL) == -1) {
 		errexit("timer_settime in _sig_timer_init error");
 	}
