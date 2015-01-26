@@ -4,7 +4,6 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include "huroutine.h"
-#include "uthread.h"
 #include "nbio.h"
 #include "channel.h"
 #include "err.h"
@@ -68,37 +67,9 @@ void huroutine_test(void) {
 	printf("Scheduling end.\n");
 }
 
-void u_func1(void *arg) {
-	char a[10] = "shit\n";
-	int i;
-	for (i = 0; i < ((struct arg *)arg)->n; i++)
-		write(STDOUT_FILENO, a, 5);
-}
-
-void u_func2(void *arg) {
-	char a[10] = "fuck\n";
-	int i;
-	for (i = 0; i < ((struct arg *)arg)->n; i++)
-		write(STDOUT_FILENO, a, 5);
-}
-
-void *uthread_test(void *arg) {
-	uthread_init(gettid());
-	arg1.n = 10000;
-	uthread_create(&u_func1, (void *)&arg1);
-	uthread_create(&u_func2, (void *)&arg1);
-	uthread_schedule();
-	return NULL;
-}
-
 int main(int argc, char **argv) {
-	//huroutine_test();
-	/*
-	pthread_t pid;
-	pthread_create(&pid, NULL, &uthread_test, (void *)NULL);
-	pthread_join(pid, NULL);
-	*/
-	uthread_test((void *)NULL);
 
-    return 0;
+	huroutine_test();
+    
+	return 0;
 }

@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <signal.h>
 #include "huroutine.h"
 #include "linklist.h"
 #include "err.h"
@@ -25,7 +26,7 @@ schedule_t *huroutine_open(void) {
     return s;
 }
 
-huroutine_t *_hu_new(schedule_t *s, 
+static huroutine_t *_hu_new(schedule_t *s, 
 		huroutine_func func, void *arg, int stksize) {
 	
     huroutine_t *ret = (huroutine_t *)malloc(sizeof(*ret));
@@ -49,13 +50,13 @@ huroutine_t *_hu_new(schedule_t *s,
     return ret;
 }
 
-void _hu_del(huroutine_t **hu) {
+static void _hu_del(huroutine_t **hu) {
     free((*hu)->stack);
     free(*hu);
     *hu = NULL;
 }
 
-void _add_schequeue(schedule_t *s, int id) {
+static void _add_schequeue(schedule_t *s, int id) {
 	insert_head(s->schequeue, id);
 	s->vector[id]->inqueue = fetchfirst_linklist(s->schequeue);
 }
@@ -116,7 +117,7 @@ void huroutine_close(schedule_t *s) {
     free(s);
 }
 
-void _hu_func(uint32_t low32, uint32_t hi32) {
+static void _hu_func(uint32_t low32, uint32_t hi32) {
     uintptr_t ptr = (uintptr_t)low32 | ((uintptr_t)hi32 << 32);
     schedule_t *s = (schedule_t *)ptr;
     int id = s->running;
@@ -145,9 +146,11 @@ void huroutine_resume(schedule_t *s, int id) {
             uintptr_t ptr = (uintptr_t)s;
             makecontext(&hu->ctx, (void (*)(void))_hu_func, 2,
 						(uint32_t)ptr, (uint32_t)(ptr >> 32));
+
             if (swapcontext(&s->main, &hu->ctx) < 0) {
 				errexit("swapcontext in huroutine_resume error");
 			}
+
             break;
             
         case SUSPEND:

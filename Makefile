@@ -1,7 +1,7 @@
-OBJ= err.o huroutine.o linklist.o nbio.o channel.o uthread.o 
-CC=clang
-CFLAGS=-g -Wall -lpthread -lrt
-LINKFLAGS=-c -g -Wall
+OBJ= err.o huroutine.o linklist.o nbio.o channel.o 
+CC=gcc
+CFLAGS=-g -Wall -lrt -O2
+LINKFLAGS=-c -g -Wall -O2
 
 .PHONY : all
 all : main benchmark
@@ -16,8 +16,6 @@ channel.o : err.o huroutine.o channel.c
 	$(CC) channel.c $(LINKFLAGS) -o channel.o
 nbio.o : err.o huroutine.o nbio.c
 	$(CC) nbio.c $(LINKFLAGS) -o nbio.o
-uthread.o : err.o huroutine.o linklist.o  uthread.c
-	$(CC) uthread.c $(LINKFLAGS) -o uthread.o 
 
 benchmark : huroutine.o benchmark.c
 	$(CC) err.o linklist.o huroutine.o benchmark.c $(CFLAGS) -o benchmark

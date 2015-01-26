@@ -15,6 +15,4 @@ The nbio.h/nbio.c are the deadly simple non-blocking IO library. I have just imp
 
 The channel.h/channel.c are the channel library used to deliver variable between two huroutine. Attention: what the channel deliver is pointer, so make sure the memory pointer points to is always accessed. Don't use this to deliver a local variable.
 
-The uthread.h/uthread.c are the source of the toy preemptive user-thread library, it is also based on the coroutine library above. I implement the library with sigaction and posix timer. The schedule algorithm is the simple round-robin algorithm too. Now the perform of this libray is very bad, it is only can be used. It's switch efficiency is extremely low.
-
-The main.c is the demo of the librarys. The huroutine\_test() is the demo function of the former two librarys and the uthread\_test() is the demo function of the latter library.
+The main.c is the demo of the librarys. The huroutine\_test() is the demo function of the former two librarys. 
