@@ -1,4 +1,4 @@
-This repository contains a coroutine library, a non-preemptive user-thread library, and a simple preemptive user-thread library.
+This repository contains a coroutine library, a non-preemptive user-thread library.
 They have already been tested on Ubuntu14.04 amd64 and Debian7 amd64 compiled by clang3.4.1 and gcc4.8.2.
 
 The huroutine.h/huroutine.c are the source of the coroutine library and the non-preemptive user-thread library called huroutine.
