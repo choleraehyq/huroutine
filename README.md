@@ -1,4 +1,4 @@
-This repository contains a coroutine library, a non-preemptive user-thread library.
+This repository contains a coroutine library and a non-preemptive user-thread library.
 They have already been tested on Ubuntu14.04 amd64 and Debian7 amd64 compiled by clang3.4.1 and gcc4.8.2.
 
 The huroutine.h/huroutine.c are the source of the coroutine library and the non-preemptive user-thread library called huroutine.
@@ -15,4 +15,4 @@ The nbio.h/nbio.c are the deadly simple non-blocking IO library. I have just imp
 
 The channel.h/channel.c are the channel library used to deliver variable between two huroutine. Attention: what the channel deliver is pointer, so make sure the memory pointer points to is always accessed. Don't use this to deliver a local variable.
 
-The main.c is the demo of the librarys. The huroutine\_test() is the demo function of the former two librarys. 
+The main.c is the demo of the librarys. The huroutine\_test() is the demo function of the former librarys. 
